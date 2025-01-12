@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    /* Evitar saltos de línea en las celdas de la tabla */
+    #registrosTable td {
+        white-space: nowrap;
+    }
+    .text-center {
+        text-align: center;
+    }
+    th.sortable {
+        cursor: pointer;
+    }
+</style>
+
+
+<table class="table table-hover" id="registrosTable">
+    <thead>
+        <tr>
+            <th class="sortable text-center">ID</th>
+            <th class="sortable text-center">Fecha</th>
+            <th class="sortable text-center">Tejidos</th>
+            <th class="sortable text-center">Color</th>
+            <th class="sortable text-center">Kilos</th>
+            <th class="sortable text-center">Metros</th>
+            <th class="sortable text-center">Partida</th>
+            <th class="sortable text-center">Tintura</th>
+            <th class="sortable text-center">Rendimiento</th>
+            <th class="sortable text-center">Precio Tintura</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for registro in registros %}
+        <tr>
+            <td class="text-center">{{ registro.id }}</td>
+            <td class="text-center">{{ registro.fecha }}</td>
+            <td class="text-center">{{ registro.tejidos }}</td>
+            <td class="text-center">{{ registro.color }}</td>
+            <td class="text-center">{{ registro.kilos }}</td>
+            <td class="text-center">{{ registro.metros }}</td>
+            <td class="text-center">{{ registro.partida }}</td>
+            <td class="text-center">{{ registro.tintura }}</td>
+            <td class="text-center">{{ registro.rend }}</td>
+            <td class="text-center">{{ registro.precio_tintura }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
+
+
+{% endblock %}
+
+
+
+
+

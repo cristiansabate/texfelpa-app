@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+
+
+
+{% block content %}
+
+<style>
+    /* Contenedor de la tabla para asegurar que se ajuste al ancho */
+    .tabla-encapsulada {
+        width: 100%;
+        overflow: hidden;
+        padding-left: 450px;
+        text-height: 18px;
+    }
+    
+
+    /* Asegurar que la tabla ocupe todo el ancho disponible */
+    #registrosTable {
+        width: 100%;
+        table-layout: fixed; /* Fija el ancho de las celdas y permite que se adapten */
+    }
+
+    /* Evitar saltos de línea en el contenido de las celdas */
+    #registrosTable td,
+    #registrosTable th {
+        white-space: nowrap;
+        font-size: 1rem; /* Tamaño de letra ajustado */
+        padding: 8px 6px; /* Espaciado reducido */
+        overflow: hidden;
+        text-overflow: ellipsis; /* Mostrar puntos suspensivos si el contenido es muy largo */
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    th.sortable {
+        cursor: pointer;
+    }
+
+    /* Estilo para el contenedor de checkboxes en varias columnas */
+    #filtroColorContainer .form-check {
+        width: 33%; /* Tres columnas */
+    }
+
+    .dropdown-menu {
+        max-height: 500px; /* Limitar la altura del menú desplegable */
+        overflow-y: auto; /* Activar scroll vertical si excede la altura */
+    }
+    .divisor {
+        width: 100%;
+        height: 2px;              /* Grosor del divisor */
+        background-color: #ccc;   /* Color del divisor */
+        margin: 20px 0;           /* Espaciado vertical */
+    }
+    
+</style>
+
+
+<div class="container mt-4">
+    <h3 class="text-center mb-4">Rendimientos Anuales Medios</h3>
+    <div class="row">
+        {% for year, rendimiento in rendimientos.items() %}
+            <div class="col-md-2 mb-4">
+                <div class="card text-center p-3 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title" style="font-size: 1rem; margin-bottom: 10px;">{{ year }}</h5>
+                        <p class="card-text" style="font-size: 1.5rem; font-weight: bold; margin-bottom: 15px;">
+                            {{ rendimiento if rendimiento else '--' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    <div class="divisor"></div>
+    <!-- Sección de gráficos -->
+    <div class="seccion-graficos mt-5">
+        <h3 class="text-center mb-4">Datos 2025</h3>
+        {% include "felpa-2025.html" %}
+        <div class="divisor"></div>
+    </div>
+    
+    <!-- Título de registros -->
+    <h2 class="text-center mb-4 mt-5">Registros de Felpa</h2>
+
+
+    <div class="tabla-encapsulada">
+    <!-- Filtros -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="filtroFechaInicio" class="form-label">Fecha Inicio</label>
+            <input type="date" id="filtroFechaInicio" class="form-control">
+        </div>
+        <div class="col-md-4">
+            <label for="filtroFechaFin" class="form-label">Fecha Fin</label>
+            <input type="date" id="filtroFechaFin" class="form-control">
+        </div>
+        <div class="col-md-4">
+            <label for="filtroColor" class="form-label">Filtrar por Color</label>
+            <div class="dropdown">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownColores" data-bs-toggle="dropdown" aria-expanded="false">
+                    Seleccionar Colores
+                </button>
+                <div class="dropdown-menu p-3" aria-labelledby="dropdownColores" style="width: 300px;">
+                    <div id="filtroColorContainer" class="row gx-2 gy-1"></div>
+                    <div class="mt-2 text-end">
+                        <button id="aplicarFiltroColor" class="btn btn-sm btn-primary">Aplicar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor de la tabla -->
+    <div class="tabla-contenedor">
+        <table class="table table-hover" id="registrosTable">
+            <thead>
+                <tr>
+                    <th class="sortable text-center" onclick="ordenarTabla('id')">ID</th>
+                    <th class="sortable text-center" onclick="ordenarTabla('fecha')">Fecha</th>
+                    <th class="sortable text-center">Tejidos</th>
+                    <th class="sortable text-center" onclick="ordenarTabla('color')">Color</th>
+                    <th class="sortable text-center">Kilos</th>
+                    <th class="sortable text-center">Metros</th>
+                    <th class="sortable text-center">Partida</th>
+                    <th class="sortable text-center">Tintura</th>
+                    <th class="sortable text-center">Rendimiento</th>
+                    <th class="sortable text-center">Precio Tintura</th>
+                    <th class="sortable text-center">Coste</th>
+                    <th class="sortable text-center">Facturado</th>
+                    <th class="sortable text-center">Beneficio</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaRegistros"></tbody>
+        </table>
+    </div>
+    </div>
+
+    <!-- Indicador de carga -->
+    <div id="loadingIndicator" class="text-center mt-3" style="display: none;">
+        <span class="spinner-border text-primary" role="status" aria-hidden="true"></span>
+        <span>Cargando más registros...</span>
+    </div>
+</div>
+
+<!-- Modal de edición -->
+<div class="modal" id="editarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Registro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editarFormulario">
+                    <input type="hidden" id="editarId" name="id">
+                    <div class="mb-3">
+                        <label for="editarFecha" class="form-label">Fecha</label>
+                        <input type="date" id="editarFecha" name="fecha" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarColor" class="form-label">Color</label>
+                        <input type="number" id="editarColor" name="color" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarTejidos" class="form-label">Tejidos</label>
+                        <input type="number" id="editarTejidos" name="tejidos" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarKilos" class="form-label">Kilos</label>
+                        <input type="number" step="0.01" id="editarKilos" name="kilos" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarMetros" class="form-label">Metros</label>
+                        <input type="number" step="0.01" id="editarMetros" name="metros" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarPartida" class="form-label">Partida</label>
+                        <input type="text" id="editarPartida" name="partida" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tintura" class="form-label">Tintura</label>
+                        <select class="form-select" id="tintura" name="tintura" required>
+                            <option value="" disabled selected>Selecciona una tarifa</option>
+                            <option value="Tintes Alzira">Tintes Alzira</option>
+                            <option value="Área Tintura">Área Tintura</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    let registrosTable = document.getElementById('tablaRegistros');
+    let filtroFechaInicio = document.getElementById('filtroFechaInicio');
+    let filtroFechaFin = document.getElementById('filtroFechaFin');
+    let filtroColorContainer = document.getElementById('filtroColorContainer');
+    let ordenActual = { columna: 'id', direccion: 'asc' };
+    
+    // Cargar registros con filtros y ordenación
+    function cargarRegistros() {
+        let url = `/cargar-registros?columna=${ordenActual.columna}&direccion=${ordenActual.direccion}`;
+        if (filtroFechaInicio.value) url += `&fecha_inicio=${filtroFechaInicio.value}`;
+        if (filtroFechaFin.value) url += `&fecha_fin=${filtroFechaFin.value}`;
+    
+        // Obtener los colores seleccionados
+        let coloresSeleccionados = [];
+        document.querySelectorAll('input[name="filtroColor"]:checked').forEach(checkbox => {
+            coloresSeleccionados.push(`colores=${checkbox.value}`);
+        });
+        if (coloresSeleccionados.length > 0) {
+            url += `&${coloresSeleccionados.join('&')}`;
+        }
+    
+        fetch(url)
+            .then(response => response.text())
+            .then(data => {
+                registrosTable.innerHTML = data; // Reemplazar contenido de la tabla
+            })
+            .catch(error => {
+                console.error('Error al cargar los registros:', error);
+            });
+    }
+    
+    // Aplicar filtros
+    filtroFechaInicio.addEventListener('change', cargarRegistros);
+    filtroFechaFin.addEventListener('change', cargarRegistros);
+    filtroColorContainer.addEventListener('change', cargarRegistros);
+    
+    // Ordenar tabla
+    function ordenarTabla(columna) {
+        if (ordenActual.columna === columna) {
+            ordenActual.direccion = ordenActual.direccion === 'asc' ? 'desc' : 'asc';
+        } else {
+            ordenActual.columna = columna;
+            ordenActual.direccion = 'asc';
+        }
+        cargarRegistros();
+    }
+    
+// Abrir modal de edición con los valores cargados
+function abrirModalEdicion(id, fecha, color, tejidos, kilos, metros, partida, tintura) {
+    document.getElementById('editarId').value = id;
+    document.getElementById('editarFecha').value = fecha;
+    document.getElementById('editarColor').value = color;
+    document.getElementById('editarTejidos').value = tejidos;
+    document.getElementById('editarKilos').value = kilos;
+    document.getElementById('editarMetros').value = metros;
+    document.getElementById('editarPartida').value = partida;
+
+    // Seleccionar la opción de tintura correspondiente
+    let selectTintura = document.getElementById('tintura');
+    for (let i = 0; i < selectTintura.options.length; i++) {
+        if (selectTintura.options[i].value === tintura) {
+            selectTintura.selectedIndex = i;
+            break;
+        }
+    }
+
+    // Mostrar el modal
+    let editarModal = new bootstrap.Modal(document.getElementById('editarModal'));
+    editarModal.show();
+}
+
+// Enviar el formulario de edición
+document.getElementById('editarFormulario').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    let id = document.getElementById('editarId').value;
+    let formData = new FormData(this);
+
+    fetch(`/editar-registro/${id}`, {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                let editarModal = bootstrap.Modal.getInstance(document.getElementById('editarModal'));
+                editarModal.hide(); // Ocultar el modal después de la edición
+                cargarRegistros(); // Recargar los registros para mostrar los cambios
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error al enviar el formulario de edición:', error);
+            alert('Error al actualizar el registro.');
+        });
+});
+
+    
+// Cargar checkboxes de colores dinámicamente
+fetch('/colores-disponibles')
+    .then(response => response.json())
+    .then(data => {
+        if (data.colores.length === 0) {
+            console.warn('No se encontraron colores para cargar.');
+            filtroColorContainer.innerHTML = '<p>No hay colores disponibles.</p>';
+            return;
+        }
+
+        filtroColorContainer.innerHTML = ''; // Limpiar contenido previo
+
+        data.colores.forEach(color => {
+            let checkbox = document.createElement('div');
+            checkbox.classList.add('form-check');
+            checkbox.innerHTML = `
+                <input class="form-check-input" type="checkbox" value="${color}" id="color${color}" name="filtroColor">
+                <label class="form-check-label" for="color${color}">
+                    ${color}
+                </label>
+            `;
+            filtroColorContainer.appendChild(checkbox);
+        });
+    })
+    .catch(error => {
+        console.error('Error al cargar los colores:', error);
+        filtroColorContainer.innerHTML = '<p>Error al cargar los colores.</p>';
+    });
+    
+    // Cargar los registros al iniciar la página
+    cargarRegistros();
+    
+    
+    
+</script>
+
+
+
+{% endblock %}

@@ -1,0 +1,284 @@
+{% block felpa2025 %}
+
+<style>
+    .metric-item {
+        font-size: 1.5rem;         /* Tamaño grande del texto */
+        font-weight: 700;          /* Texto en negrita */
+        margin: 0;
+    }
+    .metric-number {
+        font-size: 2rem;           /* Número más grande que el texto */
+        font-weight: 400;          /* Sin negrita */
+        margin: 0;
+    }
+    .metric-icon {
+        color: #004085;            /* Azul oscuro */
+        padding-right: 15px;       /* Padding a la derecha */
+    }
+    .chart-container {
+        height: 400px;             /* Altura uniforme para los gráficos */
+        width: 100%;
+    }
+    .card {
+        box-sizing: border-box;
+        padding: 20px;
+        height: 100%;              /* Asegurar que las tarjetas ocupen el 100% de la altura disponible */
+    }
+    .row.align-stretch {
+        display: flex;
+        align-items: stretch;
+    }
+    .card-body.chart-container {
+        padding: 15px;
+        padding-bottom: 60px;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Métricas superiores en una sola línea -->
+    <div class="d-flex justify-content-around mb-4">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-box-seam fs-1 metric-icon"></i>
+            <p class="metric-number me-3">{{ partidas_tintadas | number_format }}</p>
+            <p class="metric-item">Partidas Tintadas</p>
+        </div>
+        <div class="d-flex align-items-center">
+            <i class="bi bi-ban-fill fs-1 metric-icon"></i>
+            <p class="metric-number me-3">{{ kilos_tintados | number_format }}</p>
+            <p class="metric-item">Kilos Tintados</p>
+        </div>
+        <div class="d-flex align-items-center">
+            <i class="bi bi-reception-4 fs-1 metric-icon"></i>
+            <p class="metric-number me-3">{{ metros_tintados | number_format }}</p>
+            <p class="metric-item">Metros Tintados</p>
+        </div>
+    </div>
+</div>
+
+    <!-- Gráficos en una sola línea -->
+    <div class="row align-stretch">
+        <!-- Gráfico de Metros Tintados -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body chart-container">
+                    <h5 class="card-title text-center">Metros Tintados - {{ year }}</h5>
+                    <canvas id="metrosChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Facturación Diaria -->
+        <div class="col-lg-3">
+            <div class="card shadow-sm">
+                <div class="card-body chart-container">
+                    <h5 class="card-title text-center">Total Facturado</h5>
+                    <h3 class="text-success text-center">{{ total_facturado | number_format(2) }} €</h3>
+                    <canvas id="facturacionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+                <!-- Gráfico de Relación Coste vs Facturación -->
+                <div class="col-lg-3">
+                    <div class="card shadow-sm">
+                        <div class="card-body chart-container">
+                            <h5 class="card-title text-center">Coste vs Facturación</h5>
+                            <canvas id="costeFacturacionChart"></canvas>
+                        </div>
+                        <p id="notaMargen" class="note-text text-center mt-3"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Carga de la librería Chart.js desde CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Gráfico de líneas: Metros Tintados
+    const metrosCtx = document.getElementById('metrosChart').getContext('2d');
+    const metrosChart = new Chart(metrosCtx, {
+        type: 'line',
+        data: {
+            labels: {{ fechas | tojson | safe }},
+            datasets: [{
+                label: 'Metros Tintados',
+                data: {{ metros_diarios | tojson | safe }},
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,
+                tension: 0.3,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false, // Ocultar leyenda para este gráfico
+                },
+                tooltip: {
+                    bodyFont: {
+                        size: 20, // Tamaño de fuente del contenido del tooltip
+                        weight: 'bold' // Negrita para el texto
+                    },
+                    titleFont: {
+                        size: 18, // Tamaño de fuente del título del tooltip
+                        weight: 'bold'
+                    },
+                    padding: 30, // Espaciado interno del tooltip
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            return tooltipItem.raw.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    }       
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Gráfico de barras: Facturación Diaria
+    const facturacionCtx = document.getElementById('facturacionChart').getContext('2d');
+    const facturacionChart = new Chart(facturacionCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ fechas | tojson | safe }},
+            datasets: [{
+                label: 'Facturación (€)',
+                data: {{ facturacion_diaria | tojson | safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false, // Ocultar leyenda para este gráfico
+                },
+                tooltip: {
+                    bodyFont: {
+                        size: 20, // Tamaño de fuente del contenido del tooltip
+                        weight: 'bold' // Negrita para el texto
+                    },
+                    titleFont: {
+                        size: 18, // Tamaño de fuente del título del tooltip
+                        weight: 'bold'
+                    },
+                    padding: 30, // Espaciado interno del tooltip
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            return tooltipItem.raw.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    }  
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+   // Cálculo del margen bruto
+   const totalFacturado = {{ total_facturado | default(0) }};
+   const totalCoste = {{ coste_total | default(0) }};
+   const margenBruto = ((totalFacturado - totalCoste) / totalFacturado) * 100;
+   const margenBrutoEuros = totalFacturado - totalCoste;
+
+   // Plugin para mostrar el porcentaje en el centro del gráfico
+   Chart.register({
+       id: 'centerText',
+       beforeDraw: function (chart) {
+           if (chart.config.type === 'doughnut') {
+               const { width, height } = chart;
+               const ctx = chart.ctx;
+               ctx.restore();
+               const fontSize = (height / 8).toFixed(2); // Tamaño de fuente dinámico
+               ctx.font = `${fontSize}px Montserrat`;
+               ctx.textBaseline = 'middle';
+               ctx.textAlign = 'center';
+
+               const text = `${margenBruto.toFixed(1)}%`;
+               const textX = width / 2;
+               const textY = height / 2;
+
+               ctx.fillText(text, textX, textY);
+               ctx.save();
+           }
+       }
+   });
+
+   // Gráfico de Donut: Relación Coste vs Facturación
+   const costeFacturacionCtx = document.getElementById('costeFacturacionChart').getContext('2d');
+   const costeFacturacionChart = new Chart(costeFacturacionCtx, {
+       type: 'doughnut',
+       data: {
+           labels: ['Coste Total', 'Facturación Total'],
+           datasets: [{
+               data: [totalCoste, totalFacturado],
+               backgroundColor: ['rgba(255, 99, 132, 0.6)', 'rgba(75, 192, 192, 0.6)'],
+               borderColor: ['rgba(255, 99, 132, 1)', 'rgba(75, 192, 192, 1)'],
+               borderWidth: 1
+           }]
+       },
+       options: {
+           responsive: true,
+           maintainAspectRatio: false,
+           plugins: {
+               legend: {
+                   display: true,
+                   position: 'top'
+               },
+               tooltip: {
+                   bodyFont: {
+                       size: 20,
+                       weight: 'bold'
+                   },
+                   titleFont: {
+                       size: 18,
+                       weight: 'bold'
+                   },
+                   padding: 30,
+                   callbacks: {
+                       label: function (tooltipItem) {
+                           return tooltipItem.raw.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                       }
+                   }
+               }
+           },
+           cutout: '70%' // Crear el centro hueco del gráfico de donut
+       }
+   });
+
+   // Insertar la nota explicativa debajo del gráfico
+   document.getElementById('notaMargen').innerHTML = `
+       El margen bruto es de <strong>${margenBrutoEuros.toLocaleString('es-ES')} €</strong>, 
+       lo que representa el <strong>${margenBruto.toFixed(1)}%</strong> sobre el total facturado.
+   `;
+ 
+</script>
+{% endblock %}
+
+

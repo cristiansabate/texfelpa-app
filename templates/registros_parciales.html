@@ -1,0 +1,39 @@
+{% for registro in registros %}
+<tr>
+    <td class="text-center">{{ registro.id }}</td>
+    <td class="text-center">{{ registro.fecha }}</td>
+    <td class="text-center">{{ registro.tejidos }}</td>
+    <td class="text-center">{{ registro.color }}</td>
+    <td class="text-center">{{ registro.kilos }}</td>
+    <td class="text-center">{{ registro.metros }}</td>
+    <td class="text-center">{{ registro.partida }}</td>
+    <td class="text-center">{{ registro.tintura }}</td>
+    <td class="text-center {% if registro.rend is not none and registro.rend < 2.05 %}table-danger{% endif %}">
+        {{ registro.rend }}
+    </td>
+    <td class="text-center">{{ registro.precio_tintura }}</td>
+    <td class="text-center">{{ registro.coste }}</td>
+    <td class="text-center">{{ registro.facturado }}</td>
+    <td class="text-center">
+        {% if registro.coste is not none and registro.facturado is not none %}
+            {{ (registro.facturado - registro.coste) | round(2) }}
+        {% else %}
+            --
+        {% endif %}
+    </td>
+    <td class="text-center">
+        <button class="btn btn-sm btn-warning" 
+            onclick="abrirModalEdicion(
+                {{ registro.id }}, 
+                '{{ registro.fecha }}', 
+                {{ registro.color or 0 }}, 
+                {{ registro.tejidos or 0 }}, 
+                {{ registro.kilos or 0 }}, 
+                {{ registro.metros or 0 }}, 
+                '{{ registro.partida }}'
+            )">Editar</button>
+    </td>
+</tr>
+{% endfor %}
+
+

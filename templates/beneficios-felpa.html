@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Gráfico{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <h1 class="my-4 text-center">Gráfico de Beneficio Mensual - {{ year }}</h1>
+
+    <!-- Tarjetas de resumen -->
+    <div class="row mb-4 text-center">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Beneficio Anual Total</h5>
+                    <p class="card-text fs-4 text-success">
+                        {{ beneficio_total }} €
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Mes con Mayor Beneficio</h5>
+                    <p class="card-text fs-4 text-primary">
+                        {% if mes_mayor_beneficio %}
+                            {{ meses[mes_mayor_beneficio - 1] }} - {{ max_beneficio }} €
+                        {% else %}
+                            No hay datos disponibles
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Mes con Menor Beneficio</h5>
+                    <p class="card-text fs-4 text-danger">
+                        {% if mes_menor_beneficio %}
+                            {{ meses[mes_menor_beneficio - 1] }} - {{ min_beneficio }} €
+                        {% else %}
+                            No hay datos disponibles
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selector de año -->
+    <form method="GET" action="/beneficios-felpa" class="mb-4">
+        <label for="year" class="form-label">Selecciona el año:</label>
+        <select name="year" id="year" class="form-select" onchange="this.form.submit()">
+            {% for y in range(2020, 2031) %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <!-- Tarjeta del gráfico -->
+    <div class="card shadow-lg p-4" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 15px;">
+        <div class="card-body" style="padding: 20px;">
+            <h5 class="card-title text-center mb-4">Beneficio Mensual en {{ year }}</h5>
+            {% if beneficios|sum > 0 %}
+                <canvas id="beneficioChart"></canvas>
+            {% else %}
+                <p class="text-center fs-5 text-muted">No hay datos disponibles para el año seleccionado.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Carga de la librería Chart.js desde CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+{% if beneficios|sum > 0 %}
+<script>
+    // Depurar datos en la consola
+    console.log("Meses:", {{ meses | tojson | safe }});
+    console.log("Beneficios:", {{ beneficios | tojson | safe }});
+
+    // Función para formatear números (punto para miles y coma para decimales)
+    function formatoNumero(valor) {
+        return valor.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Datos para el gráfico de barras
+    const ctx = document.getElementById('beneficioChart').getContext('2d');
+    const beneficioChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ meses | tojson | safe }},  // Nombres de los meses
+            datasets: [{
+                label: 'Beneficio (€)',
+                data: {{ beneficios | tojson | safe }},  // Beneficios por mes
+                backgroundColor: 'rgba(34, 139, 230, 0.8)',  // Azul oscuro con transparencia
+                borderColor: 'rgba(34, 139, 230, 1)',        // Azul oscuro para el borde
+                borderWidth: 1
+            }]
+        },
+        options: {
+            plugins: {
+                datalabels: {
+                    color: 'black',
+                    anchor: 'end',
+                    align: 'top',
+                    formatter: (value) => formatoNumero(value) + ' €',  // Formatear con punto y coma
+                    font: {
+                        size: 14,  // Tamaño del texto de las etiquetas
+                        weight: 'bold'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatoNumero(value) + ' €';  // Formatear con punto y coma en el eje Y
+                        },
+                        font: {
+                            size: 14  // Tamaño del texto de los números en el eje Y
+                        }
+                    },
+                    max: Math.max(...{{ beneficios | tojson | safe }}) * 1.2,  // Añadir un 20% extra al máximo
+                    grace: '10%'  // Espacio adicional en la parte superior
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            size: 14  // Tamaño del texto de los meses en el eje X
+                        }
+                    }
+                }
+            }
+        },
+        plugins: [ChartDataLabels]  // Activar el plugin de DataLabels
+    });
+</script>
+{% endif %}
+
+{% endblock %}

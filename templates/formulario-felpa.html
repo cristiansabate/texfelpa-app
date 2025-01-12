@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Añadir Registro Felpa{% endblock %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="container mt-3">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+
+
+<div class="container mt-5" style="padding-bottom :150px;">
+    <h1 class="text-center">Añadir Registro Felpa</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body" style="background-color: #f8f9fa;">
+                    <form method="POST" action="{{ url_for('felpa.nuevo_registro') }}">
+                        <div class="mb-3">
+                            <label for="fecha" class="form-label">Fecha</label>
+                            <input type="text" class="form-control" id="fecha" name="fecha" placeholder="YYYY-MM-DD (AÑO-MES-DÍA)" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tejidos" class="form-label">Tejidos</label>
+                            <input type="number" class="form-control" id="tejidos" name="tejidos" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="color" class="form-label">Color</label>
+                            <input type="number" class="form-control" id="color" name="color" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="kilos" class="form-label">Kilos</label>
+                            <input type="number" step="0.01" class="form-control" id="kilos" name="kilos" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="metros" class="form-label">Metros</label>
+                            <input type="number" step="0.01" class="form-control" id="metros" name="metros" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="partida" class="form-label">Partida</label>
+                            <input type="text" class="form-control" id="partida" name="partida" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tintura" class="form-label">Tintura</label>
+                            <select class="form-select" id="tintura" name="tintura" required>
+                                <option value="" disabled selected>Selecciona una tarifa</option>
+                                <option value="Tintes Alzira">Tintes Alzira</option>
+                                <option value="Área Tintura">Área Tintura</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Añadir Registro</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

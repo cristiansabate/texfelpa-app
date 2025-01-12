@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="text-center mt-5">Panel Datos Felpa </h1>
+
+<div class="container-lg px-4 mt-4">
+    <!-- Contenedor superior con selector de años y botón de métrica -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <!-- Selector de años -->
+        <div>
+            <label class="form-label me-2">Seleccionar años:</label>
+            <div id="yearButtons" class="d-flex gap-2">
+                {% for year in range(2020, 2026) %}
+                <button type="button" class="btn btn-outline-secondary year-button" data-year="{{ year }}">
+                    {{ year }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Botón para cambiar de kilos a metros -->
+        <div>
+            <button id="toggleMetric" class="btn btn-primary">Cambiar a Metros Anuales</button>
+        </div>
+    </div>
+
+    <!-- Contenedor de tarjetas con métricas -->
+    <div id="metricsContainer" class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+        <!-- Las tarjetas se generan dinámicamente mediante JavaScript -->
+    </div>
+
+    <!-- Contenedor del gráfico -->
+    <h3 id="chartTitle" class="text-center mb-4" style="font-size: 24px; font-weight: bold;">Total Kilos (2024)</h3>
+    <canvas id="registrosChart" width="400" height="200"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let metric = 'kilos'; // Métrica inicial (kilos mensuales)
+        let selectedYears = ['2024']; // Años seleccionados por defecto
+
+        // Cargar los registros desde la variable pasada por Flask
+        const registros = {{ registros | tojson }};
+
+        // Colores pastel para cada año
+        const yearColors = {
+            '2020': 'rgba(255, 159, 64, 0.6)',
+            '2021': 'rgba(75, 192, 192, 0.6)',
+            '2022': 'rgba(153, 102, 255, 0.6)',
+            '2023': 'rgba(255, 206, 86, 0.6)',
+            '2024': 'rgba(54, 162, 235, 0.6)',
+            '2025': 'rgba(201, 203, 207, 0.6)'
+        };
+
+        // Meses en texto
+        const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+        // Inicializar el gráfico
+        const ctx = document.getElementById('registrosChart').getContext('2d');
+        let chart = createChart(metric, selectedYears);
+
+        // Mostrar las métricas iniciales
+        updateMetrics(selectedYears);
+
+        // Evento para cambiar la métrica (kilos -> metros)
+        document.getElementById('toggleMetric').addEventListener('click', function () {
+            metric = metric === 'kilos' ? 'metros' : 'kilos';
+            this.textContent = metric === 'kilos' ? 'Cambiar a Metros Anuales' : 'Cambiar a Kilos Mensuales';
+            updateChartTitle(metric, selectedYears); // Actualizar el título del gráfico
+            chart.destroy(); // Destruir el gráfico anterior
+            chart = createChart(metric, selectedYears); // Crear el nuevo gráfico
+        });
+
+        // Evento para seleccionar años con los botones
+        document.querySelectorAll(".year-button").forEach(button => {
+            button.addEventListener("click", function () {
+                const year = this.getAttribute("data-year");
+                if (selectedYears.includes(year)) {
+                    // Si el año ya está seleccionado, lo deseleccionamos
+                    selectedYears = selectedYears.filter(y => y !== year);
+                    this.classList.remove("btn-primary");
+                    this.classList.add("btn-outline-secondary");
+                } else {
+                    // Si el año no está seleccionado, lo añadimos
+                    selectedYears.push(year);
+                    this.classList.remove("btn-outline-secondary");
+                    this.classList.add("btn-primary");
+                }
+                updateChartTitle(metric, selectedYears); // Actualizar el título del gráfico
+                chart.destroy(); // Destruir el gráfico anterior
+                chart = createChart(metric, selectedYears); // Crear el nuevo gráfico
+                updateMetrics(selectedYears); // Actualizar las métricas
+            });
+        });
+
+        // Función para crear el gráfico
+        function createChart(metric, years) {
+            // Filtrar los registros según los años seleccionados
+            const filteredData = registros.filter(registro => years.includes(registro.fecha.split('-')[2]));
+
+            // Agrupar los datos por mes y por año
+            const monthlyData = {};
+            filteredData.forEach(registro => {
+                const [day, month, year] = registro.fecha.split('-');
+                const key = `${month}-${year}`;
+                if (!monthlyData[key]) monthlyData[key] = 0;
+                monthlyData[key] += registro[metric];
+            });
+
+            // Preparar los datos para el gráfico
+            const labels = Object.keys(monthlyData);
+            const datasets = years.map(year => {
+                const data = labels.map(label => label.endsWith(year) ? monthlyData[label] : 0);
+                return {
+                    label: `Total ${metric} (${year})`,
+                    data: data,
+                    backgroundColor: yearColors[year],
+                    borderColor: yearColors[year].replace('0.6', '1'),
+                    borderWidth: 1
+                };
+            });
+
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.map(label => label.split('-')[0]), // Solo mostrar el mes en el eje X
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function (tooltipItems) {
+                                    const index = tooltipItems[0].dataIndex;
+                                    const [month, year] = labels[index].split('-');
+                                    return `${monthNames[parseInt(month) - 1]} ${year}`;
+                                }
+                            },
+                            bodyFont: {
+                                size: 16
+                            },
+                            titleFont: {
+                                size: 18,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Función para actualizar las métricas
+        function updateMetrics(years) {
+            const metricsContainer = document.getElementById('metricsContainer');
+            metricsContainer.innerHTML = ''; // Limpiar las métricas anteriores
+
+            years.forEach((year, index) => {
+                const yearData = registros.filter(registro => registro.fecha.endsWith(year));
+                const totalKilos = yearData.reduce((sum, registro) => sum + registro.kilos, 0);
+                const totalMetros = yearData.reduce((sum, registro) => sum + registro.metros, 0);
+                const rendimientoMedio = totalMetros / totalKilos;
+
+                // Comparaciones respecto al año anterior
+                const previousYear = (parseInt(year) - 1).toString();
+                const previousData = registros.filter(registro => registro.fecha.endsWith(previousYear));
+                let comparisonKilos = '', comparisonMetros = '', comparisonRendimiento = '';
+
+                if (previousData.length > 0) {
+                    // Comparación de kilos
+                    const previousTotalKilos = previousData.reduce((sum, registro) => sum + registro.kilos, 0);
+                    const percentageChangeKilos = ((totalKilos - previousTotalKilos) / previousTotalKilos * 100).toFixed(2);
+                    comparisonKilos = `<span class="badge ${percentageChangeKilos >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} fs-sm align-text-top ms-2">${percentageChangeKilos >= 0 ? '+' : ''}${percentageChangeKilos}%</span>`;
+
+                    // Comparación de metros
+                    const previousTotalMetros = previousData.reduce((sum, registro) => sum + registro.metros, 0);
+                    const percentageChangeMetros = ((totalMetros - previousTotalMetros) / previousTotalMetros * 100).toFixed(2);
+                    comparisonMetros = `<span class="badge ${percentageChangeMetros >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} fs-sm align-text-top ms-2">${percentageChangeMetros >= 0 ? '+' : ''}${percentageChangeMetros}%</span>`;
+
+                    // Comparación de rendimiento
+                    const previousRendimientoMedio = previousTotalMetros / previousTotalKilos;
+                    const percentageChangeRendimiento = ((rendimientoMedio - previousRendimientoMedio) / previousRendimientoMedio * 100).toFixed(2);
+                    comparisonRendimiento = `<span class="badge ${percentageChangeRendimiento >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} fs-sm align-text-top ms-2">${percentageChangeRendimiento >= 0 ? '+' : ''}${percentageChangeRendimiento}%</span>`;
+                }
+
+                // Tarjetas con las métricas
+                metricsContainer.innerHTML += `
+                    <div class="col">
+                        <div class="card p-3 shadow-sm">
+                            <div class="fs-5 fw-semibold">${year}</div>
+                            <div class="fs-6">Kilos: <span class="fw-bold fs-4">${formatNumber(totalKilos)} kg</span> ${comparisonKilos}</div>
+                            <div class="fs-6">Metros: <span class="fw-bold fs-4">${formatNumber(totalMetros)} m</span> ${comparisonMetros}</div>
+                            <div class="fs-6">Rendimiento medio: <span class="fw-bold fs-4">${formatDecimal(rendimientoMedio)}</span> ${comparisonRendimiento}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Mover el botón debajo de las tarjetas
+            const toggleMetricButton = document.getElementById('toggleMetric');
+            metricsContainer.insertAdjacentElement('afterend', toggleMetricButton);
+        }
+
+        // Función para actualizar el título del gráfico
+        function updateChartTitle(metric, years) {
+            const title = metric === 'kilos' ? 'Total Kilos' : 'Total Metros';
+            document.getElementById('chartTitle').textContent = `${title} (${years.join(', ')})`;
+        }
+
+        // Función para formatear números al estilo español (miles con punto, decimales con coma)
+        function formatNumber(num) {
+            return num.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        // Función para formatear decimales al estilo español (solo coma como separador decimal)
+        function formatDecimal(num) {
+            return num.toFixed(2).replace('.', ',');
+        }
+    });
+</script>
+
+
+{% endblock %}
+
+
+
